@@ -8,6 +8,7 @@ import Data.Monoid
 import Data.Typeable
 import Zoom.Task
 import qualified Data.List as L
+
 ifM :: (Monad m, Monoid md) => m Bool -> md -> m md
 ifM m x = do
   result <- m
@@ -19,9 +20,15 @@ main = do
   result <- runInterpreter interpreterMain
   putStrLn $ show result
 
+defaultModules = [("Prelude", Nothing), ("Zoom.Task", Just "Task")]
+
 interpreterMain = do
-  set [installedModulesInScope := True]
+  set [ languageExtensions := [TemplateHaskell, QuasiQuotes]
+      , searchPath := ["./tasks"]]
+  msgs "Loading Modules..."
   loadTaskModules
+  msgs "Modules Loaded."
+  msgs "Running test..."
   test
 
 isFunction x = case x of 
@@ -29,19 +36,21 @@ isFunction x = case x of
   _     -> False
   
 msg x = liftIO . putStrLn . show $ x
+msgs = liftIO . putStrLn
 
-files = ["/Users/ian/Code/zoom/Main.hs"]
 test :: Interpreter ()
 test = do
+  msgs "Scanning modules"
   modules <- getLoadedModules
+  msgs "Getting exports"
   exports <- mapM getModuleExports modules
+  msg exports
   let fs = filter isFunction $ join exports
       fnames = map name fs
   msg fs
-  -- mainType <- typeOf "main"
   hi  <- interpret "SayHello.hi" (as :: IO ())
-  hi2 <- interpretTask "SayHello.hi2"
   liftIO hi
+  hi2 <- interpretTask "SayHello.hi2"
   liftIO $ hi2 []
   
 interpretTask x = interpret ("\\args -> (Task.fromTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
@@ -64,13 +73,14 @@ loadTaskModules = do
   dirs           <- liftIO getTaskDirs
   allDirPaths    <- liftIO $ mapM getAndQualifyContents dirs
   allModulePaths <- liftIO $ filterM (fmap not . doesDirectoryExist) $ join allDirPaths
+  msgs "Found task paths:"
+  msg allModulePaths
   loadModules allModulePaths
   allModules     <- getLoadedModules
+  msg allModules
   let 
-    zoomModules      = filter (L.isPrefixOf "Zoom.") allModules
-    qualifyModule x  = L.stripPrefix "Zoom." x
-    qualifiedModules = zip zoomModules (map qualifyModule zoomModules)
+    zoomModules      = filter (L.isPrefixOf "Zoom.Task.") allModules
+    qualifyModule x  = L.stripPrefix "Zoom.Task." x
+    qualifiedModules = defaultModules ++ zip zoomModules (map qualifyModule zoomModules)
+  msg qualifiedModules
   setImportsQ qualifiedModules
---  setTopLevelModules zoomModules
-
--- type Task = ZoomTask IO 

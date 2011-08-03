@@ -5,5 +5,6 @@ import Zoom.Template.TH
 exampleHelper :: Int
 exampleHelper = 21
 
-example = render [zoom|Hi, my name is #{"Ian"}.
-I am #{show exampleHelper} years old.|]
+example foo = render [zoom|Hi, my name is #{"Ian"}.
+I am #{show exampleHelper} years old.
+I also would like to say, "#{foo}".|]
