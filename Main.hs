@@ -5,6 +5,8 @@ import Control.Monad.Trans
 import System.Directory
 import System.FilePath
 import Data.Monoid
+import Data.Typeable
+import Zoom.Task
 import qualified Data.List as L
 ifM :: (Monad m, Monoid md) => m Bool -> md -> m md
 ifM m x = do
@@ -14,8 +16,13 @@ ifM m x = do
            else mempty
          
 main = do 
-  result <- runInterpreter (loadTaskModules >> test)
+  result <- runInterpreter interpreterMain
   putStrLn $ show result
+
+interpreterMain = do
+  set [installedModulesInScope := True]
+  loadTaskModules
+  test
 
 isFunction x = case x of 
   Fun _ -> True
@@ -32,8 +39,12 @@ test = do
       fnames = map name fs
   msg fs
   -- mainType <- typeOf "main"
-  hi <- interpret "SayHello.hi" (as :: IO ())
+  hi  <- interpret "SayHello.hi" (as :: IO ())
+  hi2 <- interpretTask "SayHello.hi2"
   liftIO hi
+  liftIO $ hi2 []
+  
+interpretTask x = interpret ("\\args -> (Task.fromTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
 
 -- get current working directory
 -- TODO recurse all the way to home, getting tasks for each level.
@@ -61,3 +72,5 @@ loadTaskModules = do
     qualifiedModules = zip zoomModules (map qualifyModule zoomModules)
   setImportsQ qualifiedModules
 --  setTopLevelModules zoomModules
+
+-- type Task = ZoomTask IO 

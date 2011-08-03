@@ -45,7 +45,10 @@ Build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 Cabal-version:       >=1.2
 
-
+Library
+  Build-depends: base, hamlet, text, template-haskell
+  Exposed-Modules: Zoom.Task, Zoom.Template
+  Other-Modules: Zoom.Template.TH
 Executable zoom
   -- .hs or .lhs file containing the Main module.
   Main-is: Main.hs
@@ -54,8 +57,7 @@ Executable zoom
   Build-depends: base, hint, mtl, filepath, directory
   
   -- Modules not exported by this package.
-  -- Other-modules:       
+  Other-modules: Zoom.Task
   
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
   -- Build-tools:         
-  
