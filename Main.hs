@@ -20,7 +20,7 @@ main = do
   result <- runInterpreter interpreterMain
   putStrLn $ show result
 
-defaultModules = [("Prelude", Nothing), ("Zoom.Task", Just "Task")]
+defaultModules = [("Prelude", Nothing), ("Zoom.Task", Just "Zoom.Task")]
 
 interpreterMain = do
   set [ languageExtensions := [TemplateHaskell, QuasiQuotes]
@@ -53,7 +53,7 @@ test = do
   hi2 <- interpretTask "SayHello.hi2"
   liftIO $ hi2 []
   
-interpretTask x = interpret ("\\args -> (Task.fromTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
+interpretTask x = interpret ("\\args -> (Zoom.Task.fromTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
 
 -- get current working directory
 -- TODO recurse all the way to home, getting tasks for each level.
@@ -76,6 +76,7 @@ loadTaskModules = do
   msgs "Found task paths:"
   msg allModulePaths
   loadModules allModulePaths
+--  setTopLevelModules defaultModules
   allModules     <- getLoadedModules
   msg allModules
   let 
