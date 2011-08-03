@@ -51,7 +51,7 @@ Executable zoom
   Main-is: Main.hs
   
   -- Packages needed in order to build this package.
-  Build-depends: base, hint, mtl
+  Build-depends: base, hint, mtl, filepath, directory
   
   -- Modules not exported by this package.
   -- Other-modules:       
