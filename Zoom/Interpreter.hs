@@ -47,8 +47,8 @@ interpreterMain args = do
   modsWithFuns <- getFunctionsFromImports qualified
   let qualifiedFuns = join $ map qualifyFunctions modsWithFuns
   tasks <- filterTaskFuns qualifiedFuns
-  liftIO . putStrLn . show $ tasks
-  test tasks
+  liftIO $ mapM_ putStrLn tasks
+  -- test tasks
   --dispatchArgs args
 
 qualifyFun q f = q ++ ('.':f)
@@ -66,8 +66,6 @@ loadLocalTaskModules = do
   allDirPaths    <- liftIO $ mapM getAndQualifyContents dirs
   allModulePaths <- liftIO $ filterM (fmap not . doesDirectoryExist) $ join allDirPaths
   loadModules allModulePaths
-  loadedModules <- getLoadedModules
-  liftIO . putStrLn . show $ loadedModules
   
 -- | imports both local and global Zoom.Task.* modules. 
 --   returns the qualified module names of all Zoom.Task.* modules.
@@ -78,7 +76,6 @@ importZoomTasks = do
   let 
     zoomModules      = filter (L.isPrefixOf "Zoom.Task.") (localModules ++ globalModules)
     qualifiedModules = defaultModules ++ zip zoomModules (map qualifyModule zoomModules)
-  liftIO . putStrLn . show $ qualifiedModules
   setImportsQ qualifiedModules
   return zoomModules
 
@@ -86,7 +83,6 @@ getFunctionsFromImports :: [ModuleName] -> Interpreter [(ModuleName, [String])]
 getFunctionsFromImports imps = do  
   exports <- mapM getModuleExports imps
   let pairs = zip imps $ map (map name . filter isFunction) exports
-  liftIO . putStrLn . show $ pairs
   return pairs
     
 runZoomInterpreter :: [Args] -> IO (Either InterpreterError ())
