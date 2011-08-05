@@ -44,12 +44,8 @@ interpreterMain args = do
       , searchPath := ["./tasks"]]
   loadLocalTaskModules
   qualified <- importZoomTasks
-  modsWithFuns <- getFunctionsFromImports qualified
-  let qualifiedFuns = join $ map qualifyFunctions modsWithFuns
-  tasks <- filterTaskFuns qualifiedFuns
-  liftIO $ mapM_ putStrLn tasks
-  -- test tasks
-  --dispatchArgs args
+  tasks <- availableTasks qualified
+  dispatchArgs tasks args
 
 qualifyFun q f = q ++ ('.':f)
 
@@ -93,8 +89,11 @@ isFunction x = case x of
   Fun _ -> True
   _     -> False
   
-interpretTask x = interpret ("\\args -> (Zoom.Task.fromTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
+executeTask x = interpret ("\\args -> (Zoom.Task.fromTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
 
+printTaskDescription taskName = do
+  description <- interpret ("Zoom.Task.desc " ++ taskName) (as :: String)
+  liftIO $ putStrLn description
 -- get current working directory
 -- TODO recurse all the way to home, getting tasks for each level.
 -- TODO also, get them from some global location
@@ -108,10 +107,18 @@ getAndQualifyContents dir = do
   let realContents = filter (`notElem` [".", ".."]) contents
   return $ map (dir </>) realContents
   
-test :: [String] -> Interpreter ()
-test tasks = do
-  hi  <- interpret "SayHello.hi" (as :: IO ())
-  liftIO hi
-  liftedTasks <- mapM interpretTask tasks
-  liftIO $ mapM_ (\t -> t []) liftedTasks
+availableTasks :: [String] -> Interpreter [String]
+availableTasks qualified = do
+  modsWithFuns <- getFunctionsFromImports qualified
+  let qualifiedFuns = join $ map qualifyFunctions modsWithFuns
+  filterTaskFuns qualifiedFuns
 
+printAvailableTasks taskNames = do
+  mapM_ (\t -> liftIO (putStr (t ++ ": ")) >> printTaskDescription t) $ taskNames
+
+dispatchArgs availableTasks args = case args of
+  [] -> do
+    printAvailableTasks availableTasks
+  (Args x):xs -> do 
+    task <- executeTask x
+    liftIO $ task xs
