@@ -13,10 +13,10 @@ Version:             0.1
 Synopsis:            A rake/thor-like task runner written in Haskell
 
 -- A longer description of the package.
--- Description:         
+Description:         For documentation, see github.com/iand675/Zoom
 
 -- URL for the project homepage or repository.
-Homepage:            github.com/iand675
+Homepage:            github.com/iand675/Zoom
 
 -- The license under which the package is released.
 License:             BSD3
