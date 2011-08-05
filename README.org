@@ -1,0 +1,17 @@
+* Zoom, the Haskell task runner
+  Zoom is a simple task runner that helps keep commonly used programming scripts structured, shareable, and fun.
+  Zoom is very alpha right now, and does little to keep you from shooting yourself in the foot. Expect more robustness & speed in future releases.
+** Installation
+   Assuming that you have GHC and Cabal installed: src_bash{cabal install zoom}
+** Running zoom
+   Execute zoom with no arguments to see what tasks are available.
+   Execute zoom with the qualified function name as zoom displays it to execute the task.
+** Writing your own scripts
+   For local scripts, zoom will look in the ./tasks directory of the current directory.
+   Zoom will automatically find and import global tasks.
+   All that you need to do for zoom to find your tasks is write functions of type "ZoomTask whatever" in modules that begin with the Zoom.Task prefix.
+   Here's an example that you can call with zoom by running "Demo.demo", corresponding to the module name and the function name of the task:
+*** Demo script:
+    module Zoom.Task.Demo where
+    import Zoom.Task
+    demo = Task "Prints out the string, \"This is a demo!\"" $ \args -> putStrLn "This is a demo!"
