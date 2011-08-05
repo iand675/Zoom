@@ -7,16 +7,16 @@ Name:                zoom
 -- The package version. See the Haskell package versioning policy
 -- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
 -- standards guiding when and how versions should be incremented.
-Version:             0.1
+Version:             0.1.0.1
 
 -- A short (one-line) description of the package.
 Synopsis:            A rake/thor-like task runner written in Haskell
 
 -- A longer description of the package.
-Description:         For documentation, see github.com/iand675/Zoom
+Description:         See documentation on the project homepage for more information
 
 -- URL for the project homepage or repository.
-Homepage:            github.com/iand675/Zoom
+Homepage:            http://github.com/iand675/Zoom
 
 -- The license under which the package is released.
 License:             BSD3
@@ -46,7 +46,11 @@ Build-type:          Simple
 Cabal-version:       >=1.2
 
 Library
-  Build-depends: base, hamlet, text, template-haskell
+  Build-depends:    ghc >= 7.0.3 && < 7.2,
+                    base >= 4.3 && < 5, 
+                    hamlet >= 0.8.2 && < 0.10, 
+                    text >= 0.11 && < 0.13, 
+                    template-haskell >= 2.5 && < 2.6
   Exposed-Modules: Zoom.Task, Zoom.Template, Zoom.Interpreter, Zoom.Task.Demo
   Other-Modules: Zoom.Template.TH
 Executable zoom
@@ -54,7 +58,12 @@ Executable zoom
   Main-is: Main.hs
   
   -- Packages needed in order to build this package.
-  Build-depends: ghc, base, hint, mtl, filepath, directory
+  Build-depends:    ghc >= 7.0.3 && < 7.2, 
+                    base >= 4.3 && < 5, 
+                    hint >= 0.3 && < 0.4, 
+                    mtl  >= 2.0.1 && < 2.0.3, 
+                    filepath >= 1.2.0 && < 1.4.0, 
+                    directory >= 1.1.0 && < 1.3.0
   
   -- Modules not exported by this package.
   Other-modules: Zoom.Task, Zoom.Interpreter
