@@ -54,6 +54,10 @@ filterTaskFuns fs = do
   tasks <- filterM (\f -> typeOf f >>= \t -> return $ L.isPrefixOf "Zoom.Task" t) fs
   return tasks
 
+filterAppropriateTasks ts = do
+  liftedTasks <- mapM (\x -> interpret ("Zoom.Task.discardType " ++ x) (as :: ZoomTask ())) ts
+  appropriate <- liftIO $ filterM (enableIf . snd) (zip ts liftedTasks)
+  return $ map fst appropriate
 -- | loads up modules located in the task subdirectory of the current directory.
 --   note that this currently needs to be run before loading global tasks.
 loadLocalTaskModules :: Interpreter ()  
@@ -89,7 +93,7 @@ isFunction x = case x of
   Fun _ -> True
   _     -> False
   
-executeTask x = interpret ("\\args -> (Zoom.Task.fromTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
+executeTask x = interpret ("\\args -> (Zoom.Task.runTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
 
 printTaskDescription taskName = do
   description <- interpret ("Zoom.Task.desc " ++ taskName) (as :: String)
@@ -111,7 +115,8 @@ availableTasks :: [String] -> Interpreter [String]
 availableTasks qualified = do
   modsWithFuns <- getFunctionsFromImports qualified
   let qualifiedFuns = join $ map qualifyFunctions modsWithFuns
-  filterTaskFuns qualifiedFuns
+  allTasks <- filterTaskFuns qualifiedFuns
+  filterAppropriateTasks allTasks
 
 printAvailableTasks taskNames = do
   mapM_ (\t -> liftIO (putStr (t ++ ": ")) >> printTaskDescription t) $ taskNames

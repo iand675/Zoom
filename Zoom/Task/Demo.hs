@@ -1,6 +1,8 @@
 module Zoom.Task.Demo where
 import Zoom.Task
 
-demo = Task "Prints out the string, \"This is a demo!\"" $ \ args -> do
-  putStrLn "This is a demo!"
+demo = simpleTask { desc = "Prints out the string, \"This is a demo!\"" 
+                  , runTask = \ args -> do
+                      putStrLn "This is a demo!" 
+                  }
 
