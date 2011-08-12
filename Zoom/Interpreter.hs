@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Zoom.Interpreter where
 import Language.Haskell.Interpreter
 import qualified GHC
@@ -13,7 +14,8 @@ import Data.Monoid
 import Zoom.Task
 import Data.Maybe
 import qualified Data.List as L
-
+import Zoom.Demand
+import Data.Typeable hiding (typeOf)
 
 ifM :: (Monad m, Monoid md) => m Bool -> md -> m md
 ifM m x = do
@@ -26,7 +28,7 @@ qualifyModule x  = L.stripPrefix "Zoom.Task." x
 qualifyFunctions (m, fs) = map (qualifyFun qualifyAs) fs
   where qualifyAs = fromMaybe m (qualifyModule m)
 
-defaultModules = [("Prelude", Nothing), ("Zoom.Task", Just "Zoom.Task")]
+defaultModules = [("Prelude", Nothing), ("Zoom.Task", Just "Zoom.Task"), ("Zoom.Demand", Nothing)]
 
 ghcGetAvailableModules :: GHC.GhcMonad m => m [GHC.ModuleName]
 ghcGetAvailableModules = do
@@ -38,26 +40,22 @@ getAvailableModules :: MonadInterpreter m => m [ModuleName]
 getAvailableModules = liftM (map GHC.moduleNameString) $ runGhc ghcGetAvailableModules
 
 -- | entry point for the standard zoom interpreter
-interpreterMain :: [Args] -> Interpreter ()
-interpreterMain args = do
+interpreterMain :: forall s. (Typeable s, Retrieve s) => [String] -> Interpreter [(String, Task s)]
+interpreterMain imports = do
   set [ languageExtensions := [TemplateHaskell, QuasiQuotes]
       , searchPath := ["./tasks"]]
   loadLocalTaskModules
-  qualified <- importZoomTasks
-  tasks <- availableTasks qualified
-  dispatchArgs tasks args
-
+  qualified <- importZoomTasks imports
+  taskStrings <- availableTasks qualified
+  tasks <- mapM (\x -> interpret x (as :: Task s)) taskStrings
+  return $ zip taskStrings tasks
 qualifyFun q f = q ++ ('.':f)
 
 filterTaskFuns :: [String] -> Interpreter [String]
 filterTaskFuns fs = do
-  tasks <- filterM (\f -> typeOf f >>= \t -> return $ L.isPrefixOf "Zoom.Task" t) fs
+  tasks <- filterM (\f -> typeOf f >>= \t -> return $ L.isPrefixOf "Zoom.Task.Task" t) fs
   return tasks
 
-filterAppropriateTasks ts = do
-  liftedTasks <- mapM (\x -> interpret ("Zoom.Task.discardType " ++ x) (as :: ZoomTask ())) ts
-  appropriate <- liftIO $ filterM (enableIf . snd) (zip ts liftedTasks)
-  return $ map fst appropriate
 -- | loads up modules located in the task subdirectory of the current directory.
 --   note that this currently needs to be run before loading global tasks.
 loadLocalTaskModules :: Interpreter ()  
@@ -69,13 +67,13 @@ loadLocalTaskModules = do
   
 -- | imports both local and global Zoom.Task.* modules. 
 --   returns the qualified module names of all Zoom.Task.* modules.
-importZoomTasks :: Interpreter [ModuleName]
-importZoomTasks = do
+importZoomTasks :: [String] -> Interpreter [ModuleName]
+importZoomTasks imports = do
   localModules  <- getLoadedModules
   globalModules <- getAvailableModules
   let 
     zoomModules      = filter (L.isPrefixOf "Zoom.Task.") (localModules ++ globalModules)
-    qualifiedModules = defaultModules ++ zip zoomModules (map qualifyModule zoomModules)
+    qualifiedModules = defaultModules ++ (zip imports (repeat Nothing)) ++ zip zoomModules (map qualifyModule zoomModules)
   setImportsQ qualifiedModules
   return zoomModules
 
@@ -85,16 +83,14 @@ getFunctionsFromImports imps = do
   let pairs = zip imps $ map (map name . filter isFunction) exports
   return pairs
     
-runZoomInterpreter :: [Args] -> IO (Either InterpreterError ())
-runZoomInterpreter args = runInterpreter (interpreterMain args)
+runZoomInterpreter :: (Typeable s, Retrieve s) => [String] -> IO (Either InterpreterError [(String, Task s)])
+runZoomInterpreter imports = runInterpreter $ interpreterMain imports
 
 
 isFunction x = case x of 
   Fun _ -> True
   _     -> False
   
-executeTask x = interpret ("\\args -> (Zoom.Task.runTask " ++ x ++ ") args >> return ()") (as :: [Args] -> IO ())
-
 printTaskDescription taskName = do
   description <- interpret ("Zoom.Task.desc " ++ taskName) (as :: String)
   liftIO $ putStrLn description
@@ -115,15 +111,7 @@ availableTasks :: [String] -> Interpreter [String]
 availableTasks qualified = do
   modsWithFuns <- getFunctionsFromImports qualified
   let qualifiedFuns = join $ map qualifyFunctions modsWithFuns
-  allTasks <- filterTaskFuns qualifiedFuns
-  filterAppropriateTasks allTasks
-
+  filterTaskFuns qualifiedFuns
+  
 printAvailableTasks taskNames = do
   mapM_ (\t -> liftIO (putStr (t ++ ": ")) >> printTaskDescription t) $ taskNames
-
-dispatchArgs availableTasks args = case args of
-  [] -> do
-    printAvailableTasks availableTasks
-  (Args x):xs -> do 
-    task <- executeTask x
-    liftIO $ task xs

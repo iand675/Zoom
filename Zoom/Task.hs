@@ -1,19 +1,32 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Zoom.Task where
+import Zoom.Demand
 import Data.Typeable
+import Control.Monad.State
 
-data Args = Args String
-            deriving (Show, Typeable)
+
+type TaskTransformer a s = StateT s IO a
+data Task s = Task { desc      :: String
+                   , task      :: TaskTransformer () s
+                   , enableIf  :: TaskTransformer Bool s
+                   , dependsOn :: [Task s]
+                   , alias     :: Maybe String}
+            deriving (Typeable)
                      
-data ZoomTask a = Task { desc :: String
-                       , runTask :: [Args] -> IO a
-                       , enableIf :: IO Bool
-                       , dependsOn :: [ZoomTask a]
-                       , alias :: Maybe String }
-                  deriving (Typeable)
+runTask :: (Retrieve s) => s -> Task s -> IO ()
+runTask s t = runStateT (runTask' t) s >> return ()
+  
+runTask' t = mapM_ runTask' (dependsOn t) >> task t
 
+simpleTask :: Task a
 simpleTask = Task undefined undefined (return True) [] Nothing
-
-discardType t = t {runTask = discard, dependsOn = map discardType (dependsOn t)}
-  where taskFun = runTask t
-        discard args = taskFun args >> return ()
+        
+{-
+Ideal task writing:
+task = do
+  makeDemand (String "foo" "bar")
+  makeDemand (Bool "doThis" "should I do it?")
+  retrieveKeyValuePairs
+  foo <- stringForKey "foo"
+  putStrLn foo
+-}
